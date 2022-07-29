@@ -1,0 +1,496 @@
+fastp -i in.R1.fq.gz -I in.R2.fq.gz -o out.R1.fq.gz -O out.R2.fq.gz 质控
+kallisto index GCF_002742125.1_Oar_rambouillet_v1.0_rna.fna.gz -i sheep.mm.87 kallisto构建索引文件
+ls *.fq.gz > sample.txt 将后缀为*.fq.gz的文件重定向到sample.txt
+less -S sample.txt 查看文件
+sed 's/_1.out.fq.gz//' sample.txt | less -S 切除文件中的_1.out.fq.gz内容并查看文件
+vim kallisto.sh 创建文件名为kallisto.sh的shell文件
+bash kallisto.sh 运行shell文件
+
+kallisto quant: 进行定量
+shell文件内的循环程序
+for i in `less -S sample.txt`
+do /Users/zhangzhishuai/miniconda3/bin/kallisto[运行kallisto] quant -i /Users/zhangzhishuai/Desktop/translate/sheep.mm.87[索引文件] -t 2[双核] -o /Users/zhangzhishuai/Desktop/translate/${i}[输出目录]
+/Users/zhangzhishuai/Desktop/translate/${i}_1.out.fq.gz[输入文件名] /Users/zhangzhishuai/Desktop/translate/${i}_2.out.fq.gz[输入文件名] 
+done
+
+批量创建shell文件内容命名的文件夹：
+for i in `less -S sample.txt`\ndo mkdir ${i}\ndone
+
+
+BiocManager安装软件
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+
+BiocManager::install("DESeq2")
+
+
+R代码：
+library("tximport")
+
+library("DESeq2")
+
+setwd("C:/Users/Administrator/Desktop/data1/归档 3/")
+
+library("BiocParallel")
+
+register(SnowParam(8))
+
+
+
+samples <- read.table('./sample1.txt',header = TRUE,sep = '\t')
+
+tx2gene <- read.table("./all_gene_new_trans",header = T,sep='\t')
+
+
+
+
+
+files <- file.path('.',samples$sampleID,'abundance.h5')
+
+
+
+txi.kallisto <- tximport(files, type = "kallisto", tx2gene = tx2gene,countsFromAbundance = c("lengthScaledTPM"))
+
+dds <- DESeqDataSetFromTximport(txi.kallisto, colData = samples, design = ~ condition)
+
+
+
+dds <- dds[rowSums(counts(dds)) > 1,]
+
+dds <- DESeq(dds)
+
+
+
+res_oestrum_proestrum_rep_grow <- results(dds,contrast = c('condition','sheep_oestrum','sheep_proestrum'))
+
+
+
+res_late_estrus_proestrum_rep_grow <- results(dds,contrast = c('condition','sheep_late-estrus','sheep_proestrum'))
+
+
+
+
+
+
+
+# 筛选log2FoldChange >1 | log2FoldChange < -1 padj<0.05
+
+write.csv(res_oestrum_proestrum_rep_grow,'./res_oestrum_proestrum_rep_grow.txt',quote = F,sep='\t')
+
+
+
+write.csv(res_late_estrus_proestrum_rep_grow,'./res_late_estrus_proestrum_rep_grow.txt',quote = F,sep='\t')
+
+
+
+
+
+
+
+res_sel_res_oestrum_proestrum_rep_grow_sigGene <- subset(res_oestrum_proestrum_rep_grow,padj<0.05& (log2FoldChange >1 | log2FoldChange < -1))
+
+
+
+res_sel_res_late_estrus_proestrum_rep_grow <- subset(res_late_estrus_proestrum_rep_grow,padj<0.05& (log2FoldChange >1 | log2FoldChange < -1))
+
+
+
+write.csv(res_sel_res_oestrum_proestrum_rep_grow_sigGene,'./res_sel_res_oestrum_proestrum_rep_grow_sigGene.txt',quote = F,sep='\t')
+
+
+
+write.csv(res_sel_res_late_estrus_proestrum_rep_grow,'./res_sel_res_late_estrus_proestrum_rep_grow.txt',quote = F,sep='\t')
+
+
+
+
+
+
+python代码：提取基因序列
+
+import pandas as pd
+
+
+res_faqingzhong = pd.read_csv('E:/data1/归档 3/res_sel_res_oestrum_proestrum_rep_grow_sigGene.txt',sep=',')
+
+
+
+gene_name_faqing_faqingzhong =  res_faqingzhong['Unnamed: 0'].tolist()
+
+
+NA
+loc    iloc 
+
+with open("E:/GCF_002742125.1_Oar_rambouillet_v1.0_rna.fna") as f:
+        a_dict = {}
+        for line in f:
+                line = line.strip()
+                if line.startswith(">"):
+                           name = line.split(' ')[0]
+                        a_dict[name] = ''
+                else:
+                        a_dict[name] += line
+
+
+
+a_dict
+
+
+
+with open('E:/res_faqingzhong.fasta','w') as f:
+    for k,v in a_dict.items():
+        k = k.replace('>','')
+        if k in gene_name_faqing_faqingzhong:
+            f.write('>'+k+'\n'+v+'\n')
+
+
+
+
+
+
+提取基因名称：
+import codecs
+from os.path import join
+
+import pandas as pd
+
+
+res_faqinghou = pd.read_csv('/Users/zhangzhishuai/Desktop/gene_name/res_sel_res_late_estrus_proestrum_rep_grow.txt',sep=',')
+# print(res_faqinghou)
+
+gene_name_faqing_faqinghou =  res_faqinghou['Unnamed: 0'].tolist()
+print(gene_name_faqing_faqinghou)
+
+f = codecs.open('/Users/zhangzhishuai/Desktop/gene_name/GCF_002742125.1_Oar_rambouillet_v1.0_genomic.gff', mode='r', encoding='utf-8')
+line = f.readline()
+list1 = []
+list2 = []
+while line:
+    a = line.split()
+    b = a[8:9]
+    list1.append(b)
+    line = f.readline()
+f.close()
+# print(list1)
+print(list1[0:5])
+print(type(list1))
+for k in gene_name_faqing_faqinghou:
+    for i in list1:
+        a = 0
+        for j in i:
+            str1 = ',' + join(j)
+            str1 = str(str1)
+            #print(str1)
+            list3 = str1.split(";")
+            # print(list3)
+            if k in str1:
+                print(list3[1])
+                # print(list3)
+                a = 1
+                break
+        if a == 1:
+            break
+
+
+
+
+
+python：将abundance.tsv文件中tpm值提取并取平均数，并筛选tpm大于1的行
+
+
+#%%
+
+import pandas as pd
+
+name = pd.read_csv('E:/data1/归档 3/sample1.txt',sep='\t',header=0)
+name
+
+
+
+#%%
+
+sample_name =  name['sampleID'].tolist() #提取ID生成列表
+
+sample_name
+
+
+#%%
+
+path = 'E:/data1/归档 3/'
+all = []
+for i in sample_name:
+    tmp = pd.read_csv(path+i+'/'+'abundance.tsv',sep='\t',header=0,index_col=0)
+
+    sample_tpm = tmp[['tpm']] #提取列
+
+    sample_tpm.rename({'tpm':i}, axis='columns',inplace=True)
+    all.append(sample_tpm)
+all
+
+#%% md
+
+
+
+#%%
+
+all_tpm =  pd.concat(all,axis=1) # 连接
+
+all_tpm
+
+#%%
+
+sample_treatment =  dict(zip(name['sampleID'].tolist(),\
+                             name['condition'].tolist()))
+
+
+
+sample_treatment
+
+all_tpm.rename(sample_treatment,inplace=True,axis=1)
+
+all_tpm
+
+#%%
+
+tpm_mean =  pd.DataFrame({'sheep_proestrum':all_tpm['sheep_proestrum'].mean(axis=1),\
+              'sheep_oestrum':all_tpm['sheep_oestrum'].mean(axis=1),\
+            'sheep_late-estrus':all_tpm["sheep_late-estrus"].mean(axis=1)})
+#  取平均值
+
+
+
+
+#%%
+
+tpm_mean.to_csv(path+'tpm_mean',sep='\t')  #导出
+
+
+#%%
+import pandas as pd
+#  筛选tpm大于1的行
+tpm_mean =  pd.read_csv('E:/data1/归档 3/tpm_mean',sep='\t',index_col=0)
+
+tpm_mean_sel = tpm_mean[tpm_mean>1].dropna()
+
+tpm_mean_sel.to_csv('E:/data1/归档 3/tpm_mean_sel',sep='\t')
+
+
+R：将tpm值大于1的基因(非差异基因)使用muffz包进行时间序列分析
+library('Mfuzz')
+
+
+
+tpm <- as.matrix(read.csv('E:/data1/归档 3/tpm_mean_sel',header = TRUE,sep='\t',row.names = 'gene'))
+
+
+
+eset <- new("ExpressionSet",exprs = tpm)
+
+
+
+gene.r <- filter.NA(eset, thres=0.25)
+
+gene.f <- fill.NA(gene.r,mode="mean")
+
+tmp <- filter.std(gene.f,min.std=0)
+
+gene.s <- standardise(tmp)
+
+m <- mestimate(gene.s)
+
+c <- 8
+
+cl <- mfuzz(gene.s, c = c, m = m)
+
+png("E:/data1/mfuzz2.png",units="in", width=8, height=8,res=300)
+
+mfuzz.plot2(gene.f,cl, mfrow = c(4,2),
+
+            centre = T,time.labels = c(0,15,30),
+
+            ,x11 = F)
+
+dev.off()
+cl
+cl$cluster
+write.csv(cl$cluster,'E:/cluster.csv',sep='\t',quote = F)
+
+
+
+
+
+
+
+Python提取蛋白质序列：
+from os.path import join
+
+import pandas as pd
+import codecs
+
+
+f = codecs.open('/Users/zhangzhishuai/Desktop/gene_name/res_sel_res_late_estrus_proestrum_rep_grow.txt', mode='r', encoding='utf-8')  # 打开txt文件，以‘utf-8’编码读取
+line = f.readline()   # 以行的形式进行读取文件
+gene_name_faqing_faqinghou = []
+while line:
+    a = line.split()
+    b = a[0]   # 这是选取需要读取的位数
+    gene_name_faqing_faqinghou.append(b)  # 将其添加在列表之中
+    line = f.readline()
+f.close()
+# print(gene_name_faqing_faqinghou)
+
+
+f = codecs.open('/Users/zhangzhishuai/Desktop/gene_name/GCF_002742125.1_Oar_rambouillet_v1.0_genomic.gff', mode='r', encoding='utf-8')
+line = f.readline()
+list1 = []
+list2 = []
+list3 = []
+list4 = []
+list5 = []
+while line:
+    a = line.split()
+    b = a[8:9]
+    list1.append(b)
+    line = f.readline()
+# print(list1)
+for j in list1:
+    for k in j:
+        if 'XP' in k:
+            list4.append(j)
+        if 'NP' in k:
+            list4.append(j)
+# print(list3)
+f.close()
+# print(list1)
+# print(list1[0:5])
+# print(type(list1))
+m = 0
+list7 = []
+for k in gene_name_faqing_faqinghou:
+    for i in list4:
+        a = 0
+        for j in i:
+            str1 = ',' + join(j)
+            str1 = str(str1)
+            #print(str1)
+            list3 = str1.split(";")
+            # print(list3)
+            if k in str1:
+                # print(list3[1])
+                list7.append(k)
+                print(k)
+                list5.append(list3[0])
+                m += 1
+                # print(list3)
+                a = 1
+                break
+        if a == 1:
+            break
+# print(list5)
+print(m)
+list6 = []
+for i in list5:
+    i = i.replace(',ID=cds-','')
+    list6.append(i)
+print(list7)
+print(list6)
+
+
+with open("/Users/zhangzhishuai/Desktop/gene_name/GCF_002742125.1_Oar_rambouillet_v1.0_protein.faa") as f:
+    a_dict = {}
+    for line in f:
+        line = line.strip()
+        if line.startswith(">"):
+            name = line.split(' ')[0]
+            a_dict[name] = ''
+        else:
+            a_dict[name] += line
+b_dict = dict(zip(list7,list6))
+l = 0
+with open('/Users/zhangzhishuai/Desktop/gene_name/faqinghou_protein.fasta','w') as f:
+    for k,v in a_dict.items():
+        k = k.replace('>','')
+        if k in list6:
+            for m,n in b_dict.items():
+                if k == n:
+                    l += 1
+                    f.write('>'+m+'\n'+v+'\n')
+
+print(l)
+
+
+将tpm中表达量值替换为基因名称：
+filename = '/Users/zhangzhishuai/Desktop/tpm_mean.txt' # txt文件和当前脚本在同一目录下，所以不用写具体路径
+pos = []
+Efield = []
+list3 = []
+with open(filename, 'r') as file_to_read:
+    file_to_read.readline()
+    while True:
+        lines = file_to_read.readline() # 整行读取数据
+        list1 = lines.split("\t")
+        #print(list1)
+        m = 0
+        for i in list1:
+            print(i)
+            if i in "0.0\n":
+                #print(i)
+
+                list1[m] = 0
+                #print(list[m])
+            if i not in "0.0\n":
+                #print(i)
+                a = list1[0]
+                list1[m] = a
+                #print(list[m])
+            m += 1
+        try:
+            if not (list1[1] == 0 and list1[2] == 0 and list1[3] == 0):
+                list3.append(list1)
+        except:
+            pass
+
+
+        if not lines:
+            break
+            pass
+
+print(list3)
+
+with open('/Users/zhangzhishuai/Desktop/out/txt1', 'a') as month_file:
+    for tag in list3:
+        for i in tag:
+            month_file.write(str(i))
+            month_file.write(' ')
+        month_file.write('\n')
+
+
+
+tpm提取
+import codecs
+
+import pandas as pd
+
+
+res_faqingzhong = pd.read_csv('/Users/zhangzhishuai/Desktop/gene_name/res_sel_res_late_estrus_vs_oestrum_rep_grow_6.5(1).txt',sep=',')
+gene_name_faqing_faqingzhong =  res_faqingzhong['Unnamed: 0'].tolist()
+print(gene_name_faqing_faqingzhong)
+
+
+f = codecs.open("/Users/zhangzhishuai/Desktop/tpm.txt")
+a_dict = {}
+line = f.readline()
+while line:
+    line = f.readline()
+    for i in gene_name_faqing_faqingzhong:
+        if i in line:
+            print(line)
+    # line = line.strip()
+    #if line.startswith(">"):
+    #name = line.split(' ')[0]
+    #a_dict[name] = ''
+    #a_dict[name] += line
+#print(a_dict)
+
+
+
